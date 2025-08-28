@@ -1,0 +1,20 @@
+# node_modules 資料夾
+node_modules/
+
+# 編譯輸出資料夾
+dist/
+
+# 那個瀏覽器執行檔 類似driver的感覺? 雖然知道實際上不是 但用起來就跟selenium的driver一個樣
+ms-playwright/
+
+# 環境設定檔，通常包含私密資料
+.env
+優採網填表助手.rar
+優採網程式key資料，C流程教學.mp4
+dependencies解釋.md
+backup-for-ref-autofill-strategy-abstract-class-version.ts
+try.js
+tryAI.js
+疑難雜症紀錄.txt
+mainref.ts
+task.md

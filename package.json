@@ -1,0 +1,58 @@
+{
+  "name": "auto-form-filler",
+  "version": "1.0.0",
+  "main": "./dist/main/main.js",
+  "build": {
+    "extraResources": [
+      {
+        "from": "ms-playwright",
+        "to": "ms-playwright"
+      }
+    ],
+    "files": [
+      "dist/main/**/*",
+      "dist/renderer/**/*",
+      "package.json"
+    ]
+  },
+  "win": {
+    "icon": "build/icon.ico",
+    "signAndEditExecutable": false,
+    "verifyUpdateCodeSignature": false
+  },
+  "type": "module",
+  "scripts": {
+    "start": "tsc && electron .",
+    "dev": "vite",
+    "electron": "electron .",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "transpile:electron": "tsc --project tsconfig.json",
+    "dist:mac": "npm run transpile:electron && npm run build && electron-builder --mac --arm64",
+    "dist:win": "npm run transpile:electron && npm run build && electron-builder --win --x64",
+    "dist:linux": "npm run transpile:electron && npm run build && electron-builder --linux --x64"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^17.0.1",
+    "openai": "^5.8.2",
+    "playwright-core": "^1.53.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.8",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "playwright": "^1.53.2",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
+}
