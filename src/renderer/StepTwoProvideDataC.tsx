@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-
+import { useEffect, useRef, useState } from 'react';
+import { formatTextAreaAndRespond } from './FrontEndUtils/checkDataFormatAndRespond';
+import { toast } from "react-toastify";
+import { commonToastOptions } from './FrontEndUtils/errorMessageStyles';
 type Props = {
   _dataC: Array<[string, string, string]>;
   onProvidingData: (dataC: Array<[string, string, string]>) => void;
@@ -8,63 +10,63 @@ type Props = {
 
 export default function StepTwoProvideData({ _dataC, onProvidingData }: Props) {
 
-  const [text, setText] = useState('');
+  const textRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {          // 把_dataC再傳進來 搭配上這段，可以讓使用者再切換模式後還是能保留自己原本的輸入，不會全部消失
+  useEffect(() => {          // 把_dataA再傳進來 搭配上這段，可以讓使用者再切換模式後還是能保留自己原本的輸入，不會全部消失
     if (_dataC && _dataC.length > 0) {
       const formatted = _dataC.map(item => item.join(',')).join('\n');
-      setText(formatted);
+      if (textRef.current) {
+        textRef.current.value = formatted;  // 靠著每次渲染重新填充，保存 textarea 的內容為更新後的 dataA
+      }
     }
-  }, [_dataC]);
+  }, []);
 
   // 資料沒有在子元件的話，其實可以讓父元件隨意傳個不吃參數的函數，這邊只是按下按鈕，通知父元件執行。
   // 因為父元件有所有狀態變數的資料，比較方便。  provideDataC就有用到這個做法。
   const handleClick = async () => {
-    const parsed: [string, string, string][] = text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(line => {
-        const [date, product, cost] = line.split(',');
-        return [date, product, cost];
-      });
+    if (textRef.current) {
+      const { ok, parsed } = formatTextAreaAndRespond(textRef); //無論有沒有錯誤都會回傳 parsed，因為想傳 parsed 給前端存著。 這樣使用者輸入的文字才能透過 useref一直保存
+      onProvidingData(parsed);
+      if (ok) {
+        const result = await window.electronAPI.updateDataC(parsed);   //等待後端回傳
 
-    console.log('前端列印parsed:', parsed)
-    const result = await window.electronAPI.updateDataC(parsed);   //等待後端回傳
-    alert(result.message + '\n資料：' + JSON.stringify(result.dataC)); //跳通知讓使用者知道成功
-    onProvidingData(parsed);
+        toast.error(result.message + '\n伺服器取得資料：' + JSON.stringify(result.dataC), {
+          ...commonToastOptions,
+          onClose: () => textRef.current?.focus(),
+        });
+      }
+    }
+
   };
 
 
-
   return (
-
     <div >
-      <h3 style={{           
-          color: '#F5F5DC',}}>輸入資料（模式 C）</h3>
+      <h3 style={{
+        color: '#F5F5DC',
+      }}>輸入資料（模式 C）</h3>
       <div style={{
         display: 'flex',
         alignItems: 'flex-start',  // 靠上對齊
         gap: '2rem',               // 中間間距
 
       }}>
-        <textarea style={{
-          width: '40vw',
-          height: '53vh',
-          padding: '1rem',
-          fontSize: '1.4rem',       // 約等於 text-lg
-          lineHeight: '1.75rem',      // leading-relaxed
-          border: '1px solid #ccc',
-          borderRadius: '8px',
-          resize: 'none',
-          fontFamily: 'sans-serif',
-        }}
-          className="dataProvidedA"
-          value={text}
-          onChange={(e) => setText(e.target.value)} //這行跟上面都是為了捕捉textarea的文字 然後讓buttont傳送給父元件
+        <textarea ref={textRef}
+          style={{
+            width: '40vw',
+            height: '53vh',
+            padding: '1rem',
+            fontSize: '1.4rem',       // 約等於 text-lg
+            lineHeight: '1.75rem',      // leading-relaxed
+            border: '1px solid #ccc',
+            borderRadius: '8px',
+            resize: 'none',
+            fontFamily: 'sans-serif',
+          }}
+          className="dataProvidedC"
 
         />
-        <div style={{fontSize: '2rem' , color: '#F5F5DC' }}>
+        <div style={{ fontSize: '2rem', color: '#F5F5DC' }}>
           <p>格式：</p>
           <pre>
             日期1,產品名稱1,金額1 <br />
@@ -84,12 +86,12 @@ export default function StepTwoProvideData({ _dataC, onProvidingData }: Props) {
         height: '10vh',
         margin: '1rem',
         fontSize: '1.35rem',
-                backgroundColor: '#FFEBCD',  // 淺奶油杏仁色
+        backgroundColor: '#FFEBCD',  // 淺奶油杏仁色
         color: '#5C3A21',
-                    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
         borderRadius: '19px',
-    border: 'none',
+        border: 'none',
       }} onClick={handleClick}> 填寫完畢，更新資料 </button>
 
     </div> //一個子元件只能return 一個最外層的div 其他都要塞裡面

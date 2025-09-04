@@ -1,14 +1,15 @@
 import OpenAI from "openai";
-import {productClassificationPrompt} from "../config/productClassificationPrompt.js"
+import { productClassificationPrompt } from "../config/productClassificationPrompt.js"
 
 export const ClasifyByGPT = async (
     cData: [string, string, string][]
-): 
-Promise<Map<string, { product:string, main: string; sub: string }>> => {  // product -> {product,main,sub}
-    
-    const products=cData.map(p => `- ${p}`).join('\n')
+):
+    Promise<Map<string, { product: string, main: string; sub: string }>> => {  // product -> {product,main,sub}
+
+    const products = cData.map(p => `${p[1]}`).join('\n') //只取cdata的第二項(產品名稱) 出來組合成字串
+    console.log('c data 的 products 字串組合在一起:/n', products)
     // 在每次迴圈依據 product 去獲得。  //用 vercel server 隔離用戶與密文
-    const openai = new OpenAI({ apiKey: 'holder' }); 
+    const openai = new OpenAI({ apiKey: 'holder' });
 
     const response = await openai.chat.completions.create({
         model: "gpt-4",
@@ -17,6 +18,7 @@ Promise<Map<string, { product:string, main: string; sub: string }>> => {  // pro
 
         }],
     });
+    console.log('gpt response:',response)
 
     try {
         const content: string | null = response.choices[0].message.content;
@@ -26,10 +28,11 @@ Promise<Map<string, { product:string, main: string; sub: string }>> => {  // pro
         const parsed: { product: string, main: string; sub: string }[] = JSON.parse(content);
         // 印出每筆分類結果（用索引或用 product 名稱對應都可以）
         parsed.forEach(({ product, main, sub }) => {
-            console.log(`產品：${product} → 主類別：${main}，次類別：${sub}`);
+            console.log(`產品：${product} → 主類別：${main}，次類別：${sub} `);
         });
         // 建立一個 product 對應分類的 map
         const classificationMap = new Map(parsed.map(item => [item.product, item]));
+        console.log('classificationMap from clasifybygpt:', classificationMap)
         return (classificationMap)
 
     } catch (e) {
@@ -44,12 +47,13 @@ export const mergeClassification = (
     classificationMap: Map<string, { product: string; main: string; sub: string }>
 ) => {
     // 合併進原始資料
-    const enrichedData:[string, string, string, string, string][] = 
-    originalData.map(([date, product, cost]) => {
-        const { main = '未分類', sub = '未分類' } = classificationMap.get(product) || {};//main沒有值的時候會用未分類字串代替
-        return [date, product, cost, main, sub];  // <-- 回傳陣列
-    });
+    const enrichedData: [string, string, string, string, string][] =
+        originalData.map(([date, product, cost]) => {
+            const { main = '未分類', sub = '未分類' } = classificationMap.get(product) || {};//main沒有值的時候會用未分類字串代替
+            return [date, product, cost, main, sub];  // <-- 回傳陣列
+        });
 
-        return enrichedData;
-    
+    console.log('enrichedData', enrichedData)
+    return enrichedData;
+
 };

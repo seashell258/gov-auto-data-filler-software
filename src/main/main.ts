@@ -22,11 +22,12 @@ import { AutoFillerA } from './playwright-strategies/autofill-a-strategy.js';
 import { AutoFillerB } from './playwright-strategies/autofill-b-strategy.js';
 import { AutoFillerC } from './playwright-strategies/autofill-c-strategy.js';
 import { AutoFillerContext } from './playwright-strategies/IAutoFiller.js';
-import { initializeBrowserAndPage } from './utils/playwright-utils.js';
+import browsermanager, { checkDataAFormat, checkDataBFormat, checkDataCFormat, resetPageToHome } from './utils/playwright-utils.js';
 import { ClasifyByGPT, mergeClassification } from './utils/CProcessClassifierOpenAI.js';
 import { fileURLToPath } from 'url';
 
 import type { Page, Browser } from 'playwright';
+import log from 'electron-log';
 
 
 const isDev = !app.isPackaged;
@@ -40,12 +41,13 @@ const executablePath = isDev
     'chrome.exe')  // 你本地開發瀏覽器資料夾相對路徑
 
   : path.join(
-    process.resourcesPath,  // 打包後路徑  ( ms-playwright資料夾 大概就在打包後軟體資料夾的根目錄 )
+    process.resourcesPath,  // 打包後路徑  process.resourcesPath → win-unpacked/resources
     'ms-playwright',
     'chromium-1179',
     'chrome-win',
     'chrome.exe' // Windows 範例，macOS 或 Linux 要換成對應檔名
   );
+console.log("executablepath", executablePath)
 let page: Page | undefined
 let context: AutoFillerContext
 
@@ -56,13 +58,15 @@ const strategies = {
   C: new AutoFillerC()
 }
 
-let dataA: Array<[string, string, string]> = [];
-let dataB: [string, string];
-let dataC: Array<[string, string, string]> = [];
+let dataA: Array<[string, string, string]> = [];//日期 金額 統一編號
+let dataB: [string, string]; //公告開始日期 截止日期
+let dataC: Array<[string, string, string]> = []; //日期 金額 商品名稱
 
-let failedRowsA: [string, string, string][] = [] //日期 金額 統一編號
-let failedRowsB: string[] = [] //案號 日期 金額 
-let failedRowsC: [string, string, string][] = [] //日期 金額 商品名稱
+let groupedBDatas: Record<string, [string, string, string][]> = {};
+
+let failedRowsA: [string, string, string][] = []
+let failedRowsB: string[] = [] //失敗的截止日期們 ( 截止日期是key 資料是value )
+let failedRowsC: [string, string, string][] = []
 
 app.whenReady().then(() => {
   const mainWindow = new BrowserWindow({
@@ -77,7 +81,7 @@ app.whenReady().then(() => {
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    const filePath = path.join(__dirname, '../renderer/index.html'); //試過getappPath之後比較喜歡dirname。 getapppath應該是會帶妳到asar檔案的位置
+    const filePath = path.join(__dirname, '../../renderer/index.html'); //試過getappPath之後比較喜歡dirname。 getapppath應該是會帶妳到asar檔案的位置 win unpacked
     mainWindow.loadFile(filePath);
   }
 })
@@ -85,44 +89,78 @@ app.whenReady().then(() => {
 
 
 ipcMain.handle('update-data-A', async (event, _dataA) => {   //event 不會用到 但 ipcmain一定要有event這個參數 
-  dataA = _dataA
-  console.log('main.ts got the infoA!:', dataA);
+  await resetPageToHome(page!) // 避免用戶填完A又連續填別的 環境不一致造成意外。 
+  // 如果還沒開瀏覽器，這個函數就甚麼也不會做
 
-  return {
-    message: '資料A更新成功！',
-    dataA,
-  };
+  const { isValid, error } = await checkDataAFormat(_dataA)
+  if (isValid) {
+    dataA = _dataA
+    console.log('main.ts got the infoA!:', dataA);
 
+    return {
+      message: '資料A更新成功！',
+      dataA,
+    };
+  }
+  else {
+    return {
+      message: error
+    };
+  }
 });
 
 ipcMain.handle('update-data-B', async (event, _dataB) => {   //event 不會用到 但 ipcmain一定要有event這個參數 
-  dataB = _dataB
-  console.log('main.ts got the infoB!:', dataB);
-
-  return {
-    message: '資料B更新成功！',
-    dataB,
-  };
-
+  await resetPageToHome(page!)
+  const { isValid, error } = await checkDataBFormat(_dataB)
+  if (isValid) {
+    dataB = _dataB
+    console.log('main.ts got the infoB!:', dataB);
+    return {
+      message: '資料B更新成功！',
+      dataB,
+    };
+  }
+  else {
+    return {
+      message: error
+    };
+  }
 });
 
 
 ipcMain.handle('update-data-C', async (event, _dataC) => {   //event 不會用到 但 ipcmain一定要有event這個參數 
-  dataC = _dataC
-  console.log('main.ts got the infoC!:', dataC);
+  await resetPageToHome(page!)
+  const { isValid, error } = await checkDataCFormat(_dataC)
+  if (isValid) {
+    dataC = _dataC
+    console.log('main.ts got the infoC!:', dataC);
+    return {
+      message: '資料C更新成功！',
+      dataC,
+    };
+  }
+  else {
+    return {
+      message: error
+    };
+  }
 
-  return {
-    message: '資料C更新成功！',
-    dataC,
-  };
+
+
 
 });
 
 ipcMain.handle('login', async (event) => {   //event 不會用到 但 ipcmain一定要有event這個參數 
+  try {
+    log.info('ipcmain.handle login is triggered')
+    page = await browsermanager.initializeBrowserAndPage(executablePath, isDev);
+    context = { executablePath, isDev, page };
+    return 'success'
+  } catch (error) {
 
-  page = await initializeBrowserAndPage(executablePath, isDev);
-  context = { executablePath, isDev, page };
-  return { success: true };
+    return { error, executablePath };
+  }
+
 
 })
 
@@ -130,20 +168,42 @@ ipcMain.handle('start-auto-fillA', async () => {   //event 不會用到 但 ipcm
   console.log('starting auto fillA process:');
   strategies.A.initialize(context)
   if (!page) throw new Error('沒有偵測到打開的 Chromium 網頁');
-  strategies.A.startAutoFill(dataA)
-  return { dataA, failedRowsA }
+  failedRowsA = await strategies.A.startAutoFill(dataA)
+  return failedRowsA
 })
 
-ipcMain.handle('start-auto-fillB', async () => {
+ipcMain.handle('B-start-collecting-document', async () => {
+  console.log('B-start-collecting-document');
+  if (!page) throw new Error('沒有偵測到打開的 Chromium 網頁');
 
+  const [startDate, endDate] = dataB
+  strategies.B.initialize(context)
+  groupedBDatas = await strategies.B.Bdatascapper(startDate, endDate)
+
+  return (groupedBDatas);
+
+})
+
+
+ipcMain.handle('start-auto-fillB', async () => {
+  //測試用資料 
+  /* 
+  groupedBDatas = {
+    '1140620': [
+      ['R20250611095', '1140620', '1,500'],
+      ['R20250611098', '1140620', '2,600']
+    ],
+    '1140627': [['R20250613030', '1140627', '2,880']]
+  }*/
+  console.log('groupbDATAS在main.ts', groupedBDatas)
   console.log('starting auto fillB process:');
   strategies.B.initialize(context)
   if (!page) throw new Error('沒有偵測到打開的 Chromium 網頁');
-    const [startDate, endDate] = dataB
-  const groupedBdata=await strategies.B.Bdatascapper(startDate,endDate)
-  await strategies.B.startAutoFill(groupedBdata)
-  return 'B return holder'
+
+  failedRowsB = await strategies.B.startAutoFill(groupedBDatas)
+  return failedRowsB
 })
+
 
 
 ipcMain.handle('start-auto-fillC', async () => {
@@ -152,8 +212,8 @@ ipcMain.handle('start-auto-fillC', async () => {
   if (!page) throw new Error('沒有偵測到打開的 Chromium 網頁');
   const clasifiedMap = await ClasifyByGPT(dataC);  // product -> {product,main,sub}
   const enrichedData = mergeClassification(dataC, clasifiedMap);
-  strategies.C.startAutoFill(enrichedData)
-
+  failedRowsC = await strategies.C.startAutoFill(enrichedData)
+  return failedRowsC
 
 });
 

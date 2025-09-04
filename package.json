@@ -1,7 +1,7 @@
 {
   "name": "auto-form-filler",
   "version": "1.0.0",
-  "main": "./dist/main/main.js",
+  "main": "./dist/main/main/main.js",
   "build": {
     "extraResources": [
       {
@@ -22,7 +22,7 @@
   },
   "type": "module",
   "scripts": {
-    "start": "tsc && electron .",
+    "start": "chcp 65001 && tsc && electron .",
     "dev": "vite",
     "electron": "electron .",
     "build": "vite build",
@@ -39,10 +39,12 @@
   "description": "",
   "dependencies": {
     "dotenv": "^17.0.1",
+    "electron-log": "^5.4.3",
     "openai": "^5.8.2",
     "playwright-core": "^1.53.2",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-toastify": "^11.0.5"
   },
   "devDependencies": {
     "@types/node": "^24.0.8",

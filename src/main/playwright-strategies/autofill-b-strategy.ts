@@ -1,11 +1,16 @@
 // AutoFillerA.ts
 import { Page } from 'playwright-core';
 import { AutoFillerContext, IAutoFiller } from './IAutoFiller.js';
-import { initializeBrowserAndPage, checkPageReady, navigateToFillPage, prepareNewForm, openDatePicker, fillDate, submitAndCloseOldForm } from '../utils/playwright-utils.js';
+import { checkPageReady, navigateToFillPage, prepareNewForm, openDatePicker, fillDate, submitAndCloseOldForm, reloadPage } from '../utils/playwright-utils.js';
 import path from 'path';
+import { fileURLToPath } from "url";
 import { app } from 'electron';
 import { scrapeAndGroupData } from '../BDataScraper.js';
+import log from 'electron-log';
 
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 export class AutoFillerB implements IAutoFiller<Record<string, [string, string, string][]>> {
@@ -22,23 +27,24 @@ export class AutoFillerB implements IAutoFiller<Record<string, [string, string, 
 
     private failedRows: string[] = [];//日期 金額 統一編號
 
-    public async Bdatascapper(startDate:string, enDate:string):
+    public async Bdatascapper(startDate: string, enDate: string):
         Promise<Record<string, [string, string, string][]>> {
-            const groupedBDatas = await scrapeAndGroupData(this.page,startDate,enDate)
+        const groupedBDatas = await scrapeAndGroupData(this.page, startDate, enDate, this.isDev)
         return groupedBDatas
-        }
+    }
 
     public async startAutoFill(groupedBDatas: Record<string, [string, string, string][]>):
         Promise<string[]> {
+        this.failedRows = [];
         // 呼叫輔助函數來啟動瀏覽器和頁面  //但我感覺應該是main 呼叫這個函數一次就好 aBc三策略不用
 
         // 呼叫共用輔助函數 
         await checkPageReady(this.page)
+        await reloadPage(this.page)
         await navigateToFillPage(this.page);
 
         await this.page.waitForSelector('button[title="編輯經公告/議價未成交金額(B)"]', { state: 'visible' });
         await this.page.locator('button[title="編輯經公告/議價未成交金額(B)"]').click();
-
 
         for (const [key, value] of Object.entries(groupedBDatas)) { //一個表單統一填完日期 key 後，value 是同一日期的多筆資料，放在同一個表單一起送出
             try {
@@ -64,7 +70,7 @@ export class AutoFillerB implements IAutoFiller<Record<string, [string, string, 
                 await this.page.locator('select[name="goodsNo"]').selectOption('A99999900001');
 
                 //每一個不同的 key ( 日期 ) 都會有專屬於自己的，三個資料處理後的結果
-                let caseJoinString: string = ''   //填寫佐證說明用的
+                let JoinCaseNumToString: string = ''   //填寫佐證說明用的 把案號集中在同一個 string 
                 let caseGroupedList: string[] = [] //上傳pdf，指定pdf檔名用的。
                 let costSum: number = 0
                 // for迴圈用 in 取得 index 用 for遍歷內容
@@ -73,10 +79,10 @@ export class AutoFillerB implements IAutoFiller<Record<string, [string, string, 
                     let cost: string = item[2]
                     costSum += Number(cost.replace(/,/g, ''))   //2,880 變成2880 才能變成 number
                     // 串接 caseNumber 字串到 caseJoinString，且中間加空格
-                    if (caseJoinString.length === 0) {
-                        caseJoinString = caseNumber;
+                    if (JoinCaseNumToString.length === 0) {
+                        JoinCaseNumToString = caseNumber;
                     } else {
-                        caseJoinString += ' ' + caseNumber;
+                        JoinCaseNumToString += ' ' + caseNumber;
                     }
 
                     // 同時把 caseNumber 放入 caseGroupedList
@@ -84,7 +90,7 @@ export class AutoFillerB implements IAutoFiller<Record<string, [string, string, 
                 }
 
                 console.log('costSum:', costSum);
-                console.log('caseJoinString:', caseJoinString);
+                console.log('caseJoinString:', JoinCaseNumToString);
                 console.log('caseGroupedList:', caseGroupedList);
 
                 // 3.等待輸入框可見後填入金額
@@ -93,8 +99,9 @@ export class AutoFillerB implements IAutoFiller<Record<string, [string, string, 
 
                 //4. 填寫採購說明
                 await this.page.waitForSelector('textarea[title="佐證說明"]', { state: 'visible' });
-                await this.page.locator('textarea[title="佐證說明"]').fill(`已於優先採購網路資訊平台/採購公告專區刊登公告，惟本採購案經優採平台公告，仍無廠商投標之情形，公告案號${caseJoinString}，公告截圖如附件。`);
+                await this.page.locator('textarea[title="佐證說明"]').fill(`已於優先採購網路資訊平台/採購公告專區刊登公告，惟本採購案經優採平台公告，仍無廠商投標之情形，公告案號${JoinCaseNumToString}，公告截圖如附件。`);
 
+                //5. 把 pdf 檔案上傳到清單裡面
                 // 假設 caseGroupedList 長度是 6
                 const n = caseGroupedList.length;
 
@@ -104,35 +111,46 @@ export class AutoFillerB implements IAutoFiller<Record<string, [string, string, 
                     await this.page.locator('div.add.btn-add-01').click();
                 }
 
-                // 逐筆填資料
+                // 逐筆填 pdf 資料
                 let pdfPath: string
                 for (let i = 0; i < n; i++) {
-                    // 找到 input[type="file"]，直接設定要上傳的檔案路徑 
-                    if (this.isDev) {
-                        pdfPath = path.join(
-                            __dirname,  //原本在dist/main/playwtight-strategies
-                            '..',  //到達main
-                            '..',  //到達dist
-                            ',,', //到達根目錄
-                            `${caseGroupedList[i]}.pdf`
-                        );
-                        console.log('dirname', __dirname)
-                    }
-                    else {
-                        pdfPath = path.join(
-                            app.getAppPath(),
-                            '..', // 往上一層
-                            '..', // 再上一層
-                            '..',
-                            `${caseGroupedList[i]}.pdf` // 組出完整檔名
-                        )
+                    try {
+                        // 找到 input[type="file"]，直接設定要上傳的檔案路徑 
+                        if (this.isDev) {
+                            pdfPath = path.join(
+                                __dirname,  //原本在dist/main/main/playwtight-strategies
+                                '..',  //到達main
+                                '..',  //到達main
+                                '..', //到達dist
+                                '..',
+                                `${caseGroupedList[i]}.pdf`
+                            );
 
+                            console.log('devMode fill pdfPath:', pdfPath)
+                        }
+                        else {
+                            pdfPath = path.join(
+                                app.getAppPath(), //route to where app.asar is, which is win-unpacked/resources/app.asar (會指向asar檔案 而不是資料夾而已)
+                                '..',
+                                '..',
+                                '..',
+                                'B 模式的公告 pdf 存在這裡',
+                                `${caseGroupedList[i]}.pdf` // 組出完整檔名
+                            )
+                            log.info('app.getAppPath()',app.getAppPath())
+                            log.info('production mode fill pdfPath:', pdfPath)
+
+                        }
+                        console.log(pdfPath)
+                        await this.page.locator('input[type="file"]').nth(i).setInputFiles(pdfPath);
+                    } catch (error) {
+                        console.error("❌ 發生錯誤 at i=", i, "case=", caseGroupedList[i]);
+                        console.error(error); // 會印出真正的 Error message + stack
                     }
-                    console.log(pdfPath)
-                    await this.page.locator('input[type="file"]').nth(i).setInputFiles(pdfPath);
                 }
 
             } catch (error) {
+                console.log('B填資料迴圈的 default Error', error)
                 this.failedRows.push(key) // failedrows 是日期列表。 因為三筆資料可能就是填一次表單
                 throw Error
             }

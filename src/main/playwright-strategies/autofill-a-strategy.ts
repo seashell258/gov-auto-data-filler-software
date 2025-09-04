@@ -1,29 +1,33 @@
 // AutoFillerA.ts
 import { Page } from 'playwright-core';
 import { AutoFillerContext, IAutoFiller } from './IAutoFiller.js';
-import { initializeBrowserAndPage, checkPageReady, navigateToFillPage, prepareNewForm, openDatePicker, fillDate, submitAndCloseOldForm }
+import { checkPageReady, navigateToFillPage, prepareNewForm, openDatePicker, fillDate, submitAndCloseOldForm, reloadPage }
   from '../utils/playwright-utils.js';
 
 
 export class AutoFillerA implements IAutoFiller<[string, string, string][]> {
-    private executablePath!: string;
-    private isDev!: boolean;
-    private page!: Page;  // 後面會用 checkPageReady 函數來排除空白的情況。 所以使用非空斷言
+  private executablePath!: string;
+  private isDev!: boolean;
+  private page!: Page;  // 後面會用 checkPageReady 函數來排除空白的情況。 所以使用非空斷言
 
-    async initialize(context: AutoFillerContext): Promise<void> {
-        const { executablePath, isDev, page } = context;
-        this.executablePath = executablePath;
-        this.isDev = isDev;
-        this.page = page!; // 假設 context.page 已經存在
-    }
+  async initialize(context: AutoFillerContext): Promise<void> {
+    const { executablePath, isDev, page } = context;
+    this.executablePath = executablePath;
+    this.isDev = isDev;
+    this.page = page!; // 假設 context.page 已經存在
+  }
 
   private failedRows: [string, string, string][] = [];//日期 金額 統一編號
 
 
-//日期 金額 統一編號
+  //日期 金額 統一編號
   public async startAutoFill(dataA: [string, string, string][]): Promise<[string, string, string][]> {
+    this.failedRows = [];
     // 呼叫共用輔助函數 
     await checkPageReady(this.page)
+    // 避免前一次失敗，會殘留未完成的表單在畫面上導致按不到下一輪的新增
+    await reloadPage(this.page)
+
     await navigateToFillPage(this.page);
 
     // 等待「button[title="編輯身障團體成交金額(A)"]」出現且可見再點
@@ -77,11 +81,11 @@ export class AutoFillerA implements IAutoFiller<[string, string, string][]> {
 
       } catch (error) {
         this.failedRows.push([date, num, factory])
-        console.log('startautofilla default error + this.failedrows:', this.failedRows)
+        console.log('startautofilla default error \n ', 'this.failedrows:', this.failedRows)
       }
     }
     console.log('start-auto-fillA handled, about to return failedrows, from autofill-a-strategy')
-      return this.failedRows
+    return this.failedRows
   }
 
   //___ helper function

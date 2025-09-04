@@ -1,7 +1,7 @@
 import { Page } from 'playwright-core';
 import { IAutoFiller } from './IAutoFiller.js';
 import type { AutoFillerContext } from './IAutoFiller.js';
-import { checkPageReady, navigateToFillPage, prepareNewForm, openDatePicker, fillDate, submitAndCloseOldForm } from '../utils/playwright-utils.js';
+import { checkPageReady, navigateToFillPage, prepareNewForm, openDatePicker, fillDate, submitAndCloseOldForm, reloadPage } from '../utils/playwright-utils.js';
 import { mainCategoryMap, subCategoryMap } from '../config/categoryMap.js'
 
 export class AutoFillerC implements IAutoFiller<[string, string, string, string, string][]> {
@@ -10,6 +10,7 @@ export class AutoFillerC implements IAutoFiller<[string, string, string, string,
     private executablePath!: string; // main 會初始化數值
     private isDev!: boolean; //main 會初始化數值
     private page!: Page;  // 後面會用 checkPageReady 函數來排除空白的情況。 所以使用非空斷言
+    private failedRows: [string, string, string][] = []
 
     async initialize(context: AutoFillerContext): Promise<void> {
         const { executablePath, isDev, failedRows, page } = context;
@@ -19,10 +20,13 @@ export class AutoFillerC implements IAutoFiller<[string, string, string, string,
 
     }
 
-    public async startAutoFill(enrichedData: [string, string, string, string, string][]): 
-    Promise<[string, string, string, string, string][]> {
+    public async startAutoFill(enrichedData: [string, string, string, string, string][]):
+        Promise<[string, string, string][]> {
+        this.failedRows = [];
         // 呼叫共用輔助函數 
         await checkPageReady(this.page)
+        // 避免前一次失敗，會殘留未完成的表單在畫面上導致按不到下一輪的新增
+        await reloadPage(this.page)
         await navigateToFillPage(this.page);
 
         await this.page.waitForSelector('button[title="編輯不經優採成交金額(C)"]', { state: 'visible' });
@@ -50,7 +54,7 @@ export class AutoFillerC implements IAutoFiller<[string, string, string, string,
                     valueToSelect = categoryMap[main as keyof typeof categoryMap];
                     // 使用 valueToSelect
                 } else {
-                    console.log('main可能是未分類 或是什麼其他不在選項清單裡的主類別')
+                    console.log('main可能是未分類 或是什麼其他不在選項清單裡的主類別 main:',main)
                 }
 
                 await this.page.selectOption('select[name="categoryParent"]', valueToSelect);
@@ -65,7 +69,7 @@ export class AutoFillerC implements IAutoFiller<[string, string, string, string,
                     subValueToSelect = subcategoryMap[sub as keyof typeof subcategoryMap];
                     // 使用 valueToSelect
                 } else {
-                    console.log('sub可能是未分類 或是什麼其他不在選項清單裡的次類別')
+                    console.log('sub可能是未分類 或是什麼其他不在選項清單裡的次類別, sub:',sub)
                 }
                 await this.page.waitForTimeout(1000); // set time out 沒有await 會沒效果
 
@@ -75,12 +79,12 @@ export class AutoFillerC implements IAutoFiller<[string, string, string, string,
                 await submitAndCloseOldForm(this.page)
 
             } catch (error) {
-                //this.failedRows!.push([date, product, cost])
-                //console.log('failedRowsC 其中一次:', this.failedRows)
+                this.failedRows!.push([date, product, cost])
+                console.log('failedRowsC 在迴圈中被新增了一行:', this.failedRows)
             }
         }
-        console.log('start-auto-fillC handled, about to return failedrows, from autofill-a-strategy')
-    return ([['failedrowscholder','failedrowscholder','failedrowscholder','failedrowscholder','failedrowscholder']])
+        console.log('start-auto-fillC handled, about to return failedrows, from autofill-C-strategy')
+        return (this.failedRows)
     }
     /*
         //___ helper function

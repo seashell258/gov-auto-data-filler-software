@@ -20,7 +20,7 @@ export const productClassificationPrompt = (products: string) => `
 - 代工服務-[食品代（加）工類,非食品代（加）工類,建材加工服務類]
 - 其他-[其他生產服務類,防疫用品類]
 
-以下是需要分類的產品:
+以下是需要分類的產品，每一行是一個產品名稱:
 ${products}')}
 
 分析其最合適的主類別與次類別，並**ensure the output is a valid JSON object in a compact format without any additional explanations,escape characters**：

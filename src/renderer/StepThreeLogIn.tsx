@@ -13,9 +13,9 @@ export default function App({ mode }: prop) {
   let [DatasC, setDatasC] = useState<[string, string, string][]>([]);  //[[string,string,string]]
 
 
-  const [failedRowsA, setFailedRowsA] = useState<[string, string, string][] | null>(null);
+  let [failedRowsA, setFailedRowsA] = useState<[string, string, string][] | null>(null);
   let [failedRowsB, setFailedRowsB] = useState<string[]>([]);
-  let [failedRowsC, setFailedRowsC] = useState<[string, string, string][]>([]);
+  let [failedRowsC, setFailedRowsC] = useState<[string, string, string][]|null>(null);
 
   switch (mode) {
     //#region A
@@ -58,9 +58,10 @@ export default function App({ mode }: prop) {
             setFailedRowsA(Array.isArray(resultA) ? resultA : []);
           }}
 
+
+
           > 第二步：開始自動填表 </button>
           <div>
-
             {failedRowsA === null ? ( //同一次程式執行期間 failedrows不會清除，所以執行兩次自動填表 可能會有第一次殘留的 failedrows
               <div></div>
             ) : failedRowsA.length > 0 ? ( //呼叫了startautofillA就一定會有failedrows的回傳
@@ -76,8 +77,6 @@ export default function App({ mode }: prop) {
             ) : (
               <div style={{ color: '#c78e24ff', fontWeight: 'bold' }}>目前沒有自動填寫失敗的資料</div>
             )}
-
-
           </div>
 
 
@@ -193,7 +192,11 @@ export default function App({ mode }: prop) {
             transition: 'all 0.2s ease',
             borderRadius: '15px',
             border: 'none',
-          }} onClick={window.electronAPI.login}> 第一步：優先採購網登入 </button>
+          }} onClick={async () => {
+            const result = await window.electronAPI.login()
+            console.log(result)
+          }
+          }> 第一步：優先採購網登入 </button>
           <div style={{ marginBottom: '5rem', color: '#F5F5DC' }}>登入完停在首頁就夠了，可以直接回來按下第二步</div>
 
           <button style={{
@@ -214,12 +217,30 @@ export default function App({ mode }: prop) {
             fontSize: '1.45rem'
           }} onClick={async () => {
             const resultC = await window.electronAPI.startAutoFillC()
-            console.log('後端回傳resultA：', resultC);
-            setDatasA(resultC);
+            console.log('後端回傳resultC：', resultC);
+            setFailedRowsC(Array.isArray(resultC) ? resultC : []);
 
           }}
 
           > 第二步：開始自動填表 </button>
+
+          <div>
+            {failedRowsC === null ? ( //同一次程式執行期間 failedrows不會清除，所以執行兩次自動填表 可能會有第一次殘留的 failedrows
+              <div></div>
+            ) : failedRowsC.length > 0 ? ( //呼叫了startautofillA就一定會有failedrows的回傳
+              failedRowsC.map(([date, cost, taxIdNumber], index) => (
+                <div
+                  key={index}
+                  style={{ color: '#e77325ff', fontWeight: 'bold' }}
+                >
+                  (填寫失敗的幾筆資料:) 日期: {date} / 金額: {cost} / 產品名稱: {taxIdNumber}
+                </div>
+
+              ))
+            ) : (
+              <div style={{ color: '#c78e24ff', fontWeight: 'bold' }}>目前沒有自動填寫失敗的資料</div>
+            )}
+          </div>
         </div>
       );
     //#endregion
