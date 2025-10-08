@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { productClassificationPrompt } from "../src/main/config/productClassificationPrompt"
+import { productClassificationPrompt } from "../src/main/config/productClassificationPrompt.js"
 
 export default async function handler(  
   req: { method: 'POST'; body: { query: string } },
