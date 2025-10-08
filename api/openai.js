@@ -2,9 +2,11 @@ import OpenAI from "openai";
 import { productClassificationPrompt } from "../src/main/config/productClassificationPrompt"
 
 export default async function handler(req, res) {
+  console.log('handler called', req.method, req.body);
+
   const { query } = req.body; // 從前端拿到的資料
 
-  const apiKey = process.env.openai_api_key;
+  const apiKey = process.env.OPENAI_API_KEY;
   const openai = new OpenAI({ apiKey: apiKey });
 
   try {
