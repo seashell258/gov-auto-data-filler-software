@@ -1,7 +1,10 @@
 import OpenAI from "openai";
 import { productClassificationPrompt } from "../src/main/config/productClassificationPrompt"
 
-export default async function handler(req, res) {
+export default async function handler(  
+  req: { method: 'POST'; body: { query: string } },
+  res: { status: (code: number) => { json: (data: any) => void } }) 
+  {
   console.log('handler called', req.method, req.body);
 
   const { query } = req.body; // 從前端拿到的資料

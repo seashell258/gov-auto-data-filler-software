@@ -10,5 +10,5 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist/main",   // 編譯後的輸出位置
   },
-    "include": ["src/main/**/*.ts"]  //只編譯後端的部分 前端交給vite.config
+    "include": ["api/*.ts,src/main/**/*.ts", "src/renderer/FrontEndUtils/checkDataFormatAndRespond.ts"]  //應該要只編譯後端的部分 前端交給vite.config
 }
