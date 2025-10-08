@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { productClassificationPrompt } from "src/main/config/productClassificationPrompt.js"
+import { productClassificationPrompt } from "../src/main/config/productClassificationPrompt"
 
 export default async function handler(req, res) {
   const { query } = req.body; // 從前端拿到的資料
@@ -19,5 +19,7 @@ export default async function handler(req, res) {
     res.status(200).json(response);
   }
   catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "OpenAI API call failed" });
   }
 }
