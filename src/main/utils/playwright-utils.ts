@@ -38,7 +38,7 @@ class BrowserManager {
 
         // 登入（可以再抽出去 login() function）
         await this.page.fill('input[name="account"]', "392050700V");
-        await this.page.fill('input[name="password"]', "!Amy590901");
+        await this.page.fill('input[name="password"]', "@Amy590901");
 
         return this.page;
     }

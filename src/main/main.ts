@@ -29,6 +29,11 @@ import { fileURLToPath } from 'url';
 import type { Page, Browser } from 'playwright';
 import log from 'electron-log';
 
+import { getPdfFolderPath } from './utils/getPdfPath.js'
+import { shell } from 'electron/common';
+
+
+
 
 const isDev = !app.isPackaged;
 const __filename = fileURLToPath(import.meta.url);
@@ -183,7 +188,13 @@ ipcMain.handle('B-start-collecting-document', async () => {
   return (groupedBDatas);
 
 })
+//#region 打開存pdf的按鈕 (B模式)
+ipcMain.handle('open-folder', async () => {
+  let PdfFolderPathpath = getPdfFolderPath()
+  shell.openPath(getPdfFolderPath());
 
+})
+//#endregion
 
 ipcMain.handle('start-auto-fillB', async () => {
   //測試用資料 
@@ -216,6 +227,7 @@ ipcMain.handle('start-auto-fillC', async () => {
   return failedRowsC
 
 });
+
 
 
 

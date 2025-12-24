@@ -15,7 +15,7 @@ export default function App({ mode }: prop) {
 
   let [failedRowsA, setFailedRowsA] = useState<[string, string, string][] | null>(null);
   let [failedRowsB, setFailedRowsB] = useState<string[]>([]);
-  let [failedRowsC, setFailedRowsC] = useState<[string, string, string][]|null>(null);
+  let [failedRowsC, setFailedRowsC] = useState<[string, string, string][] | null>(null);
 
   switch (mode) {
     //#region A
@@ -120,6 +120,23 @@ export default function App({ mode }: prop) {
 
           }}> 第二步：開始收集公文 pdf 和紀錄資料 </button>
 
+          <button style={{
+            width: '35vw',
+            height: '10vh',
+            margin: '1rem',
+            backgroundColor: '#FFEBCD',
+            color: '#5C3A21',
+            cursor: 'pointer',
+            borderRadius: '15px',
+            border: 'none',
+
+            // @todo 跟上面的login  api的函數包在另一個函數裡的做法比較看看。 這邊如果可以就用這種寫法就好
+            fontSize: '1.45rem'
+          }} onClick={() => {
+            window.electronAPI.openFolder();
+          }}>
+            打開存著 pdf 的資料夾 ( 如果需要人工上傳 pdf )
+          </button>
 
           <button style={{
             width: '35vw',
@@ -139,8 +156,10 @@ export default function App({ mode }: prop) {
             setFailedRowsB(failedResultB)
           }
 
-
           }> 第三步：開始自動填表和上傳 pdf </button>
+
+
+
 
           <div>
             <h5>按下第三步之後，下面的資料如果被填寫失敗，會變成紅色</h5>

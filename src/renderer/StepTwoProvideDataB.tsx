@@ -3,7 +3,7 @@ import { commonToastOptions } from './FrontEndUtils/errorMessageStyles';
 import { toast } from 'react-toastify';
 
 type Props = {
-  _dataB: [string, string]|[]
+  _dataB: [string, string] | []
   onProvidingData: (dataB: [string, string]) => void;
 };
 
@@ -32,10 +32,10 @@ export default function StepTwoProvideData({ _dataB, onProvidingData }: Props) {
 
     onProvidingData(parsed);
     const result = await window.electronAPI.updateDataB(parsed);
-            toast.error(result.message + '\n伺服器取得資料：' + JSON.stringify(result.dataB), {//跳通知讓使用者知道成功
-              ...commonToastOptions,
-              onClose: () => textRef.current?.focus(),
-            });
+    toast.error(result.message + '\n伺服器取得資料：' + JSON.stringify(result.dataB), {//跳通知讓使用者知道成功
+      ...commonToastOptions,
+      onClose: () => textRef.current?.focus(),
+    });
   };
 
 
@@ -57,6 +57,12 @@ export default function StepTwoProvideData({ _dataB, onProvidingData }: Props) {
           className="dataProvidedB"
           placeholder="公文要從哪一天填到哪一天？   比如 1140610,1140710"
         />
+      </div>
+
+      <div style={{ fontSize: '2rem', color: '#F5F5DC' }}>
+        <p>格式：</p>
+        <pre>
+          日期1,日期2  比如 1140610,1140710  </pre>
       </div>
 
       <button style={{

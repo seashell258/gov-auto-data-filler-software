@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startAutoFillA:() => ipcRenderer.invoke('start-auto-fillA'),
   BstartCollectingOfficialDocument:() => ipcRenderer.invoke('B-start-collecting-document'),
   startAutoFillB:() => ipcRenderer.invoke('start-auto-fillB'),
-  startAutoFillC:() => ipcRenderer.invoke('start-auto-fillC') 
+  startAutoFillC:() => ipcRenderer.invoke('start-auto-fillC'),
 
+  openFolder: () => ipcRenderer.invoke('open-folder')
 })

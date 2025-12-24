@@ -2,11 +2,14 @@
 import { Page } from 'playwright-core';
 import { AutoFillerContext, IAutoFiller } from './IAutoFiller.js';
 import { checkPageReady, navigateToFillPage, prepareNewForm, openDatePicker, fillDate, submitAndCloseOldForm, reloadPage } from '../utils/playwright-utils.js';
+import { getPdfFolderPath } from '../utils/getPdfPath.js'
 import path from 'path';
 import { fileURLToPath } from "url";
 import { app } from 'electron';
 import { scrapeAndGroupData } from '../BDataScraper.js';
 import log from 'electron-log';
+
+
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -113,51 +116,37 @@ export class AutoFillerB implements IAutoFiller<Record<string, [string, string, 
 
                 // 逐筆填 pdf 資料
                 let pdfPath: string
+                let pdfDesktopDir: string
                 for (let i = 0; i < n; i++) {
                     try {
-                        // 找到 input[type="file"]，直接設定要上傳的檔案路徑 
-                        if (this.isDev) {
-                            pdfPath = path.join(
-                                __dirname,  //原本在dist/main/main/playwtight-strategies
-                                '..',  //到達main
-                                '..',  //到達main
-                                '..', //到達dist
-                                '..',
-                                `${caseGroupedList[i]}.pdf`
-                            );
+                        pdfDesktopDir = getPdfFolderPath()
 
-                            console.log('devMode fill pdfPath:', pdfPath)
-                        }
-                        else {
-                            pdfPath = path.join(
-                                app.getAppPath(), //route to where app.asar is, which is win-unpacked/resources/app.asar (會指向asar檔案 而不是資料夾而已)
-                                '..',
-                                '..',
-                                '..',
-                                'B 模式的公告 pdf 存在這裡',
-                                `${caseGroupedList[i]}.pdf` // 組出完整檔名
-                            )
-                            log.info('app.getAppPath()',app.getAppPath())
-                            log.info('production mode fill pdfPath:', pdfPath)
+                        pdfPath = path.join(
+                            pdfDesktopDir,
+                            `${caseGroupedList[i]}.pdf`
+                        );
 
-                        }
-                        console.log(pdfPath)
-                        await this.page.locator('input[type="file"]').nth(i).setInputFiles(pdfPath);
-                    } catch (error) {
-                        console.error("❌ 發生錯誤 at i=", i, "case=", caseGroupedList[i]);
-                        console.error(error); // 會印出真正的 Error message + stack
+                        console.log('fill pdfPath:', pdfPath)
+
+                    await this.page.locator('input[type="file"]').nth(i).setInputFiles(pdfPath);
                     }
-                }
+                      
 
-            } catch (error) {
-                console.log('B填資料迴圈的 default Error', error)
-                this.failedRows.push(key) // failedrows 是日期列表。 因為三筆資料可能就是填一次表單
-                throw Error
+                 catch (error) {
+                    console.error("❌ 發生錯誤 at i=", i, "case=", caseGroupedList[i]);
+                    console.error(error); // 會印出真正的 Error message + stack
+                }
             }
-            await submitAndCloseOldForm(this.page)
+            
+            } catch (error) {
+            console.log('B填資料迴圈的 default Error', error)
+            this.failedRows.push(key) // failedrows 是日期列表。 因為三筆資料可能就是填一次表單
+            throw Error
         }
-        return (this.failedRows)
+        await submitAndCloseOldForm(this.page)
     }
+    return(this.failedRows)
+}
 
 
 }

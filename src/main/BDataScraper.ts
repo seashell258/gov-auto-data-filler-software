@@ -1,6 +1,8 @@
 import { Locator, Page } from 'playwright-core';
 import { checkPageReady, navigateToFillPage, prepareNewForm, openDatePicker, fillDate, submitAndCloseOldForm }
   from './utils/playwright-utils.js';
+import { getPdfFolderPath } from './utils/getPdfPath.js'
+import path from 'path';
 
 
 type OfficialDocumentData = [string, string, string]; // [案號, 截止日期, 金額]
@@ -44,10 +46,10 @@ async function isolateModalForPdfSave(page: Page) { //要把 pdf 以外的網頁
   });
 }
 
-async function saveModalAsPdf(page: Page, caseNumber: string,isdev:boolean) {
-  const pafSavePath = isdev
-  ?`${caseNumber}.pdf`
-  :`../B 模式的公告 pdf 存在這裡/${caseNumber}.pdf`
+async function saveModalAsPdf(page: Page, caseNumber: string) {
+  let pdfDesktopPath = getPdfFolderPath()
+  const pafSavePath =
+    path.join(pdfDesktopPath, `${caseNumber}.pdf`)
   await page.pdf({
     path: pafSavePath, //打包後環境 會是使用者啟動app的目錄 根目錄就是 win-unpacked
     format: 'A4',
@@ -88,7 +90,7 @@ async function closeModal(page: Page) {
 
 
 
-export async function scrapeAndGroupData(page: Page, startDate: string, endDate: string,isdev:boolean): Promise<Record<string, OfficialDocumentData[]>> {
+export async function scrapeAndGroupData(page: Page, startDate: string, endDate: string, isdev: boolean): Promise<Record<string, OfficialDocumentData[]>> {
   console.log('starting collecting B official doc process:');
 
   let result = await checkPageReady(page);
@@ -140,7 +142,7 @@ export async function scrapeAndGroupData(page: Page, startDate: string, endDate:
       console.log('案號:', caseNumber);
 
       await isolateModalForPdfSave(page);
-      await saveModalAsPdf(page, caseNumber,isdev);
+      await saveModalAsPdf(page, caseNumber); //存在桌面一個資料夾
       officialDocumentDatas.push([caseNumber, endDate, amountText]);
       restorePageAfterPdfSaved(page)
       await closeModal(page);
