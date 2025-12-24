@@ -8,32 +8,57 @@ export default function App({ mode }: prop) {
   type Row = [caseId: string, date: string, cost: string];
   type GroupedBDatas = Record<string, Row[]>;
 
-  let [groupedBDatas, setGroupedBDatas] = useState<GroupedBDatas>({});
-  let [DatasA, setDatasA] = useState<[string, string, string][]>([]);  //[[string,string,string]]
-  let [DatasC, setDatasC] = useState<[string, string, string][]>([]);  //[[string,string,string]]
+  const [groupedBDatas, setGroupedBDatas] = useState<GroupedBDatas>({});
+  const [DatasA, setDatasA] = useState<[string, string, string][]>([]);  //[[string,string,string]]
+  const [DatasC, setDatasC] = useState<[string, string, string][]>([]);  //[[string,string,string]]
 
 
-  let [failedRowsA, setFailedRowsA] = useState<[string, string, string][] | null>(null);
-  let [failedRowsB, setFailedRowsB] = useState<string[]>([]);
-  let [failedRowsC, setFailedRowsC] = useState<[string, string, string][] | null>(null);
+  const [failedRowsA, setFailedRowsA] = useState<[string, string, string][] | null>(null);
+  const [failedRowsB, setFailedRowsB] = useState<string[]>([]);
+  const [failedRowsC, setFailedRowsC] = useState<[string, string, string][] | null>(null);
+
+  const [browserOpened, setBrowserOpened] = useState<boolean>(false);
+
+// 共用按鈕
+const LoginButton :React.FC =() => {
+  const handleLogin = async () => {
+    if (browserOpened) return;
+
+    const result = await window.electronAPI.login();
+    if (result === 'success') setBrowserOpened(true);
+    else console.error(result.error);
+  };
+
+  return (
+    <button
+      onClick={handleLogin}
+      disabled={browserOpened}
+      style={{
+        width: '25vw',
+        height: '10vh',
+        margin: '1rem',
+        fontSize: '1.25rem',
+        backgroundColor: browserOpened ? '#ccc' : '#FFEBCD',
+        color: '#5C3A21',
+        cursor: browserOpened ? 'not-allowed' : 'pointer',
+        transition: 'all 0.2s ease',
+        borderRadius: '15px',
+        border: 'none',
+      }}
+    >
+      {browserOpened ? '已經按過這按鈕了，請確認藍顏色的chrome是打開的，並且處在登入完畢的狀態' : '第一步：優先採購網登入'}
+    </button>
+  );
+};
+
 
   switch (mode) {
     //#region A
     case 'A':
       return (
         <div>
-          <button style={{
-            width: '25vw',
-            height: '10vh',
-            margin: '1rem',
-            fontSize: '1.45rem',
-            backgroundColor: '#FFEBCD',
-            color: '#5C3A21',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            borderRadius: '15px',
-            border: 'none',
-          }} onClick={window.electronAPI.login}> 第一步：優先採購網登入 </button>
+          <LoginButton></LoginButton>
+          
           <div style={{ marginBottom: '5rem', color: '#F5F5DC' }}>登入完停在首頁就夠了，可以直接回來按下第二步</div>
 
           <button style={{
@@ -58,9 +83,10 @@ export default function App({ mode }: prop) {
             setFailedRowsA(Array.isArray(resultA) ? resultA : []);
           }}
 
-
-
           > 第二步：開始自動填表 </button>
+          <div style={{ marginBottom: '5rem', color: '#F5F5DC' }}>按下「 開始自動填表 」按鈕後，
+            請進入藍顏色的 chrome。這時會觀察到，程式自動填表到一半，停止了動作。
+            請手動填寫表單的，「 商品服務名稱 」欄位。 選好後，程式便會繼續自動進行。 </div>
           <div>
             {failedRowsA === null ? ( //同一次程式執行期間 failedrows不會清除，所以執行兩次自動填表 可能會有第一次殘留的 failedrows
               <div></div>
@@ -89,17 +115,7 @@ export default function App({ mode }: prop) {
     case 'B':
       return (
         <div style={{ color: '#F5F5DC' }}>
-          <button style={{
-            width: '35vw',
-            height: '10vh',
-            margin: '1rem',
-            fontSize: '1.45rem',
-            backgroundColor: '#FFEBCD',
-            color: '#5C3A21',
-            cursor: 'pointer',
-            borderRadius: '15px',
-            border: 'none',
-          }} onClick={window.electronAPI.login}> 第一步：優先採購網登入 </button>
+                    <LoginButton></LoginButton>
           <div style={{ marginBottom: '5rem', color: '#F5F5DC' }}>登入完停在首頁就夠了，可以直接回來按下第二步</div>
 
           <button style={{
@@ -200,22 +216,7 @@ export default function App({ mode }: prop) {
     case 'C':
       return (
         <div>
-          <button style={{
-            width: '25vw',
-            height: '10vh',
-            margin: '1rem',
-            fontSize: '1.45rem',
-            backgroundColor: '#FFEBCD',  // 淺奶油杏仁色
-            color: '#5C3A21',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            borderRadius: '15px',
-            border: 'none',
-          }} onClick={async () => {
-            const result = await window.electronAPI.login()
-            console.log(result)
-          }
-          }> 第一步：優先採購網登入 </button>
+           <LoginButton></LoginButton>
           <div style={{ marginBottom: '5rem', color: '#F5F5DC' }}>登入完停在首頁就夠了，可以直接回來按下第二步</div>
 
           <button style={{
