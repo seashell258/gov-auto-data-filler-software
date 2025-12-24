@@ -1,5 +1,4 @@
-import OpenAI from "openai";
-import { productClassificationPrompt } from "../config/productClassificationPrompt.js"
+
 
 export const ClasifyByGPT = async (
     cData: [string, string, string][]
@@ -8,24 +7,25 @@ export const ClasifyByGPT = async (
 
     const products = cData.map(p => `${p[1]}`).join('\n') //只取cdata的第二項(產品名稱) 出來組合成字串
     console.log('c data 的 products 字串組合在一起:/n', products)
-    // 在每次迴圈依據 product 去獲得。  //用 vercel server 隔離用戶與密文
-    const openai = new OpenAI({ apiKey: 'holder' });
-
-    const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{
-            role: "user", content: productClassificationPrompt(products)
-
-        }],
+    // 在每次迴圈依據 product 去獲得。  
+    
+    //用 vercel server 去呼叫 api，避免 key 洩漏。
+    const res = await fetch('/api/openai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: products }), // 你要傳給 server 的內容
     });
-    console.log('gpt response:',response)
+
+    const data = await res.json();
+    console.log('gpt response via vervel server:', data)
 
     try {
-        const content: string | null = response.choices[0].message.content;
+        const content: string | null = data.choices[0].message.content;
         if (content === null) {
             throw new Error("OpenAI 回傳 content 為 null");
         }
         const parsed: { product: string, main: string; sub: string }[] = JSON.parse(content);
+        
         // 印出每筆分類結果（用索引或用 product 名稱對應都可以）
         parsed.forEach(({ product, main, sub }) => {
             console.log(`產品：${product} → 主類別：${main}，次類別：${sub} `);
